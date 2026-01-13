@@ -106,6 +106,8 @@ final class MapHomeViewModel: ObservableObject {
     @Published var selectedPaymentMethod: PaymentMethod = .cash
     @Published var isDropdownOpen: Bool = false
     
+
+    
     // MARK: - Vehicle State
     @Published var nearbyVehicles: [Vehicle] = []
     @Published var isLoadingVehicles: Bool = false
@@ -380,6 +382,8 @@ final class MapHomeViewModel: ObservableObject {
             cameraPosition = .rect(rect.insetBy(dx: -rect.size.width * 0.2, dy: -rect.size.height * 0.2))
         }
     }
+    
+
     
     // MARK: - Private Helpers
     

@@ -99,10 +99,10 @@ private extension MapHomeView {
                 }
             }
             
-            // Rota çizgisi (siyah)
+            // Rota çizgisi (Siyah, statik)
             if let route = viewModel.calculatedRoute {
                 MapPolyline(route.polyline)
-                    .stroke(.black, lineWidth: 5)
+                    .stroke(.black, lineWidth: 8)
             }
         }
         .mapStyle(.standard(pointsOfInterest: .all, showsTraffic: false))
