@@ -99,14 +99,14 @@ final class MapHomeViewModel: ObservableObject {
     @Published var userLocation: CLLocationCoordinate2D?
     @Published var destinationCoordinate: CLLocationCoordinate2D?
     @Published var destinationName: String?
-    @Published var calculatedRoute: MKRoute?
+    @Published var calculatedRoute: MKRoute? // For single segment or backward compatibility
+    @Published var routeSegments: [MKRoute] = [] // For multi-segment routes
+    @Published var stops: [(coordinate: CLLocationCoordinate2D, name: String)] = []
     
     // MARK: - Selection State
     @Published var selectedTaxiType: TaxiType = .yellow
     @Published var selectedPaymentMethod: PaymentMethod = .cash
     @Published var isDropdownOpen: Bool = false
-    
-
     
     // MARK: - Vehicle State
     @Published var nearbyVehicles: [Vehicle] = []
@@ -312,10 +312,11 @@ final class MapHomeViewModel: ObservableObject {
         // Backend entegrasyonu sonra eklenecek
     }
     
-    /// Varış noktası seç ve rota hesapla
-    func setDestination(_ coordinate: CLLocationCoordinate2D, name: String) {
+    /// Varış noktası seç ve rota hesapla (Opsiyonel duraklarla)
+    func setDestination(_ coordinate: CLLocationCoordinate2D, name: String, stops: [(coordinate: CLLocationCoordinate2D, name: String)] = []) {
         destinationCoordinate = coordinate
         destinationName = name
+        self.stops = stops
         
         // Rota hesapla
         calculateRoute()
@@ -324,8 +325,10 @@ final class MapHomeViewModel: ObservableObject {
     /// Rotayı temizle
     func clearRoute() {
         calculatedRoute = nil
+        routeSegments = []
         destinationCoordinate = nil
         destinationName = nil
+        stops = []
         
         // Kullanıcı konumuna geri zoom yap
         if let location = locationService.currentLocation {
@@ -333,57 +336,77 @@ final class MapHomeViewModel: ObservableObject {
         }
     }
     
-    /// Rota hesapla (MKDirections ile)
+    /// Rota hesapla (Zincirleme)
     private func calculateRoute() {
         guard let userCoord = userLocation,
               let destCoord = destinationCoordinate else {
-            #if DEBUG
-            print("⚠️ Cannot calculate route: missing locations")
-            #endif
             return
         }
         
+        Task {
+            var segments: [MKRoute] = []
+            var currentStart = userCoord
+            
+            // 1. Duraklar arası rota hesapla
+            for stop in stops {
+                if let segment = await calculateSegment(from: currentStart, to: stop.coordinate) {
+                    segments.append(segment)
+                    currentStart = stop.coordinate
+                }
+            }
+            
+            // 2. Son duraktan (veya başlangıçtan) varış noktasına hesapla
+            if let finalSegment = await calculateSegment(from: currentStart, to: destCoord) {
+                segments.append(finalSegment)
+            }
+            
+            await MainActor.run {
+                self.routeSegments = segments
+                self.calculatedRoute = segments.last // Compatibility
+                
+                // Zoom
+                if !segments.isEmpty {
+                    self.zoomToShowRoutes(segments)
+                }
+            }
+        }
+    }
+    
+    /// Tek bir segment hesapla helper
+    private func calculateSegment(from source: CLLocationCoordinate2D, to destination: CLLocationCoordinate2D) async -> MKRoute? {
         let request = MKDirections.Request()
-        request.source = MKMapItem(placemark: MKPlacemark(coordinate: userCoord))
-        request.destination = MKMapItem(placemark: MKPlacemark(coordinate: destCoord))
+        request.source = MKMapItem(placemark: MKPlacemark(coordinate: source))
+        request.destination = MKMapItem(placemark: MKPlacemark(coordinate: destination))
         request.transportType = .automobile
         request.requestsAlternateRoutes = false
         
         let directions = MKDirections(request: request)
         
-        Task {
-            do {
-                let response = try await directions.calculate()
-                
-                await MainActor.run {
-                    if let route = response.routes.first {
-                        self.calculatedRoute = route
-                        self.zoomToShowRoute(route, from: userCoord, to: destCoord)
-                        
-                        #if DEBUG
-                        print("✅ Route calculated: \(route.distance / 1000) km, \(route.expectedTravelTime / 60) min")
-                        #endif
-                    }
-                }
-            } catch {
-                #if DEBUG
-                print("❌ Route calculation failed: \(error.localizedDescription)")
-                #endif
-            }
+        do {
+            let response = try await directions.calculate()
+            return response.routes.first
+        } catch {
+            print("❌ Segment calculation failed: \(error.localizedDescription)")
+            return nil
         }
     }
     
-    /// Haritayı rotayı gösterecek şekilde zoom yap
-    private func zoomToShowRoute(_ route: MKRoute, from: CLLocationCoordinate2D, to: CLLocationCoordinate2D) {
-        let rect = route.polyline.boundingMapRect
-        let padding = UIEdgeInsets(top: 80, left: 40, bottom: 350, right: 40) // Bottom sheet için alan bırak
+    /// Haritayı tüm rotaları içerecek şekilde zoom yap
+    private func zoomToShowRoutes(_ routes: [MKRoute]) {
+        guard let firstRoute = routes.first else { return }
+        
+        var totalRect = firstRoute.polyline.boundingMapRect
+        
+        for route in routes.dropFirst() {
+            totalRect = totalRect.union(route.polyline.boundingMapRect)
+        }
+        
+        let padding = UIEdgeInsets(top: 80, left: 40, bottom: 350, right: 40)
         
         withAnimation(.easeInOut(duration: 0.8)) {
-            cameraPosition = .rect(rect.insetBy(dx: -rect.size.width * 0.2, dy: -rect.size.height * 0.2))
+            cameraPosition = .rect(totalRect.insetBy(dx: -totalRect.size.width * 0.2, dy: -totalRect.size.height * 0.2))
         }
     }
-    
-
     
     // MARK: - Private Helpers
     

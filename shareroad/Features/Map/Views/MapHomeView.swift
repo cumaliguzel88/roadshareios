@@ -64,7 +64,12 @@ struct MapHomeView: View {
                 
                 // Biraz gecikme ile rota hesapla (animasyon için)
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                    viewModel.setDestination(destination.coordinate, name: destination.title)
+                    // Durakları hazırla
+                    let stops = routeSearchViewModel.stops
+                        .compactMap { $0 }
+                        .map { ($0.coordinate, $0.title) }
+                    
+                    viewModel.setDestination(destination.coordinate, name: destination.title, stops: stops)
                 }
             }
         }
@@ -89,6 +94,15 @@ private extension MapHomeView {
                 }
             }
             
+            // Duraklar (Stop Markers - Kırmızı)
+            ForEach(Array(viewModel.stops.enumerated()), id: \.offset) { index, stop in
+                Annotation(coordinate: stop.coordinate) {
+                    StopMarkerView(number: index + 1)
+                } label: {
+                    Text(stop.name)
+                }
+            }
+            
             // Varış noktası marker
             if let destCoord = viewModel.destinationCoordinate,
                let destName = viewModel.destinationName {
@@ -99,9 +113,9 @@ private extension MapHomeView {
                 }
             }
             
-            // Rota çizgisi (Siyah, statik)
-            if let route = viewModel.calculatedRoute {
-                MapPolyline(route.polyline)
+            // Rota çizgileri (Siyah, statik, tüm segmentler)
+            ForEach(viewModel.routeSegments, id: \.self) { segment in
+                MapPolyline(segment.polyline)
                     .stroke(.black, lineWidth: 8)
             }
         }
@@ -116,6 +130,34 @@ private extension MapHomeView {
         RideSelectionSheet(viewModel: viewModel) {
             showRouteSearch = true
         }
+    }
+}
+
+// MARK: - Stop Marker View
+/// Durak için kırmızı marker
+struct StopMarkerView: View {
+    let number: Int
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            // Pin başlığı
+            ZStack {
+                Circle()
+                    .fill(.red)
+                    .frame(width: 32, height: 32)
+                
+                Text("\(number)")
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundStyle(.white)
+            }
+            
+            // Pin iğnesi
+            Triangle()
+                .fill(.red)
+                .frame(width: 12, height: 10)
+                .offset(y: -2)
+        }
+        .shadow(color: .black.opacity(0.3), radius: 4, x: 0, y: 2)
     }
 }
 

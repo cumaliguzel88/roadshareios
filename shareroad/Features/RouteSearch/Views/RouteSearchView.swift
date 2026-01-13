@@ -77,6 +77,13 @@ struct RouteSearchView: View {
             }
             .animation(.easeInOut(duration: 0.3), value: viewModel.showStopLimitWarning)
             .animation(.easeInOut(duration: 0.3), value: viewModel.stops.count)
+            .onChange(of: focusedField) { _, newFocus in
+                if let focus = newFocus {
+                    viewModel.activeField = focus
+                    // Alan değiştiğinde önceki aramayı temizle
+                    viewModel.searchResults = []
+                }
+            }
         }
     }
 }
@@ -111,9 +118,7 @@ private extension RouteSearchView {
                         text: Binding(
                             get: { viewModel.stopTexts.indices.contains(index) ? viewModel.stopTexts[index] : "" },
                             set: { newValue in
-                                if viewModel.stopTexts.indices.contains(index) {
-                                    viewModel.stopTexts[index] = newValue
-                                }
+                                viewModel.updateStopText(at: index, text: newValue)
                             }
                         ),
                         placeholder: "route.stop.placeholder".localized,
@@ -389,11 +394,6 @@ struct StopTextField: View {
                 }
             
             Spacer()
-            
-            // Drag handle (görsel)
-            Image(systemName: "line.3.horizontal")
-                .font(.system(size: 12))
-                .foregroundStyle(.gray.opacity(0.5))
             
             // Remove butonu
             Button {

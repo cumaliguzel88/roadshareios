@@ -67,6 +67,7 @@ final class RouteSearchViewModel: ObservableObject {
     private var searchTask: Task<Void, Never>?
     private var cancellables = Set<AnyCancellable>()
     private let geocoder = CLGeocoder()
+    private let stopSearchSubject = PassthroughSubject<(Int, String), Never>()
     
     /// UserDefaults keys
     private let recentSearchesKey = "com.shareroad.recentSearches"
@@ -105,9 +106,27 @@ final class RouteSearchViewModel: ObservableObject {
                 self?.performSearch(query: query)
             }
             .store(in: &cancellables)
+            
+        // Stop text değişikliklerini dinle (debounce ile)
+        stopSearchSubject
+            .debounce(for: .milliseconds(500), scheduler: RunLoop.main)
+            .sink { [weak self] (index, query) in
+                guard let self = self,
+                      case .stop(let activeIndex) = self.activeField,
+                      activeIndex == index else { return }
+                self.performSearch(query: query)
+            }
+            .store(in: &cancellables)
     }
     
     // MARK: - Public Methods
+    
+    /// Durak metnini güncelle ve arama yap
+    func updateStopText(at index: Int, text: String) {
+        guard stopTexts.indices.contains(index) else { return }
+        stopTexts[index] = text
+        stopSearchSubject.send((index, text))
+    }
     
     /// Kullanıcının mevcut konumunu pickup olarak ayarla (tam adresle)
     func setUserLocation(_ location: CLLocation) {
