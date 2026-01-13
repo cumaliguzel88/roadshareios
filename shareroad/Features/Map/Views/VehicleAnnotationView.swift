@@ -25,6 +25,7 @@ struct VehicleAnnotationView: View {
             .resizable()
             .scaledToFit()
             .frame(width: 40, height: 40) // User marker (~48pt) dan biraz küçük, 32 -> 40 büyütüldü
+            .rotationEffect(.degrees(vehicle.bearing)) // Araç yönüne göre döndür
             .opacity(opacity)
             .onAppear {
                 withAnimation(.easeIn(duration: 0.5)) {

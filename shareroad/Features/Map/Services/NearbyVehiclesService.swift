@@ -127,6 +127,28 @@ final class NearbyVehiclesService {
         return CLLocationCoordinate2D(latitude: newLat, longitude: newLon)
     }
     
+    /// Mevcut konumdan belirli bir mesafede (0-50m) rastgele bir koordinat üretir
+    /// Idle animasyonu için kullanılır (30m - 80m arası - Yavaş Akış)
+    func generateRandomNearbyCoordinate(from current: CLLocationCoordinate2D) -> CLLocationCoordinate2D {
+        // Rastgele mesafe (30 - 80m)
+        let minDistance: Double = 30
+        let maxDistance: Double = 80
+        let distance = Double.random(in: minDistance...maxDistance)
+        
+        let r = distance / 111000 // Derece cinsinden
+        
+        let t = 2 * Double.pi * Double.random(in: 0...1) // Rastgele açı
+        
+        let x = r * cos(t)
+        let y = r * sin(t)
+        
+        // Boylam düzeltmesi
+        let newLat = current.latitude + y
+        let newLon = current.longitude + (x / cos(current.latitude * .pi / 180))
+        
+        return CLLocationCoordinate2D(latitude: newLat, longitude: newLon)
+    }
+    
     /// İki koordinat arası mesafe (metre)
     private func distanceBetween(_ coord1: CLLocationCoordinate2D, _ coord2: CLLocationCoordinate2D) -> Double {
         let loc1 = CLLocation(latitude: coord1.latitude, longitude: coord1.longitude)

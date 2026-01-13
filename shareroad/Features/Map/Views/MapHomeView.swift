@@ -37,6 +37,12 @@ struct MapHomeView: View {
             }
         }
         .ignoresSafeArea(edges: .bottom)
+        .onAppear {
+            viewModel.startVehicleAnimations()
+        }
+        .onDisappear {
+            viewModel.stopVehicleAnimations()
+        }
         .onTapGesture {
             // Dropdown açıkken dışarıya basılırsa kapat
             if viewModel.isDropdownOpen {

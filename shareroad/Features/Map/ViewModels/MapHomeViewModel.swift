@@ -107,6 +107,7 @@ final class MapHomeViewModel: ObservableObject {
     // MARK: - Vehicle State
     @Published var nearbyVehicles: [Vehicle] = []
     @Published var isLoadingVehicles: Bool = false
+    private var movementTimer: Timer?
     
     // MARK: - Dependencies
     let locationService: LocationService
@@ -126,26 +127,31 @@ final class MapHomeViewModel: ObservableObject {
         self.locationService = locationService
         setupBindings()
     }
-    
+
     // MARK: - Private Methods
     
     /// Konum servisini dinle
     private func setupBindings() {
-        // ... (Mevcut bindings)
-        
         // İlk konum geldiğinde araçları yükle
         locationService.$currentLocation
             .compactMap { $0 }
             .first()
             .receive(on: DispatchQueue.main)
             .sink { [weak self] location in
-                self?.userLocation = location.coordinate
-                self?.centerOnUserLocation(location)
+                guard let self = self else { return }
+                self.userLocation = location.coordinate
+                self.centerOnUserLocation(location)
                 
                 // Araçları yükle (0.5s gecikmeli)
                 Task {
                     try? await Task.sleep(nanoseconds: 500_000_000)
-                    await self?.loadNearbyVehicles(around: location)
+                    await self.loadNearbyVehicles(around: location)
+                    
+                    // Animasyonları başlat (2s gecikmeli)
+                    try? await Task.sleep(nanoseconds: 2_000_000_000)
+                    await MainActor.run {
+                        self.startVehicleAnimations()
+                    }
                 }
             }
             .store(in: &cancellables)
@@ -175,6 +181,90 @@ final class MapHomeViewModel: ObservableObject {
         #if DEBUG
         print("🚕 Loaded \(vehicles.count) nearby vehicles")
         #endif
+    }
+    
+    // MARK: - Animation Logic
+    
+    /// Araç animasyonlarını başlatır
+    func startVehicleAnimations() {
+        // Timer zaten varsa başlatma
+        guard movementTimer == nil else { return }
+        
+        // Timer interval: 2 saniye (Sürekli akış, hiç bekleme yok)
+        movementTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.animateRandomVehicles()
+            }
+        }
+    }
+    
+    /// Araç animasyonlarını durdurur
+    func stopVehicleAnimations() {
+        movementTimer?.invalidate()
+        movementTimer = nil
+    }
+    
+    /// Rastgele araçları hareket ettirir
+    private func animateRandomVehicles() {
+        guard !nearbyVehicles.isEmpty else { return }
+        
+        // Rastgele 1 araç seç (Her 2 saniyede bir, tek tek kalksınlar)
+        let numberOfVehiclesToMove = 1
+        // Eğer toplam araç sayısı azsa hepsini hareket ettir
+        let count = min(numberOfVehiclesToMove, nearbyVehicles.count)
+        
+        // Rastgele indeksler seç (Set kullanarak uniqueness sağla)
+        var selectedIndices = Set<Int>()
+        while selectedIndices.count < count {
+            selectedIndices.insert(Int.random(in: 0..<nearbyVehicles.count))
+        }
+        
+        for index in selectedIndices {
+            animateVehicle(at: index)
+        }
+    }
+    
+    /// Belirtilen indeksteki aracı hareket ettirir
+    private func animateVehicle(at index: Int) {
+        guard index < nearbyVehicles.count else { return }
+        
+        let vehicle = nearbyVehicles[index]
+        let newCoordinate = vehicleService.generateRandomNearbyCoordinate(from: vehicle.coordinate)
+        
+        // Rotasyon hesapla
+        let newBearing = calculateBearing(from: vehicle.coordinate, to: newCoordinate)
+        
+        // Çok YAVAŞ akış (40-60 saniye)
+        // Kısa mesafeyi çok uzun sürede alacaklar -> Çok düşük hız
+        let duration = Double.random(in: 40.0...60.0)
+        
+        // SwiftUI Animation ile koordinat ve rotasyon güncelle
+        withAnimation(.linear(duration: duration)) {
+            nearbyVehicles[index].coordinate = newCoordinate
+            nearbyVehicles[index].bearing = newBearing
+        }
+    }
+    
+    /// İki nokta arasındaki açıyı (bearing) hesaplar
+    private func calculateBearing(from: CLLocationCoordinate2D, to: CLLocationCoordinate2D) -> Double {
+        let lat1 = from.latitude * .pi / 180
+        let lon1 = from.longitude * .pi / 180
+        let lat2 = to.latitude * .pi / 180
+        let lon2 = to.longitude * .pi / 180
+        
+        let dLon = lon2 - lon1
+        
+        let y = sin(dLon) * cos(lat2)
+        let x = cos(lat1) * sin(lat2) - sin(lat1) * cos(lat2) * cos(dLon)
+        
+        var bearing = atan2(y, x) * 180 / .pi
+        
+        // Normalize: 0-360
+        if bearing < 0 {
+            bearing += 360
+        }
+        
+        return bearing
     }
     
     // MARK: - Public Methods

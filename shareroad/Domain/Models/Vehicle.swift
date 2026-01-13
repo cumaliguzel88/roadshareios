@@ -12,7 +12,8 @@ import CoreLocation
 /// Haritada gösterilecek araç modeli
 struct Vehicle: Identifiable, Equatable {
     let id: UUID
-    let coordinate: CLLocationCoordinate2D
+    var coordinate: CLLocationCoordinate2D
+    var bearing: Double = 0.0 // Araç yönü (0-360 derece)
     let type: VehicleType
     let isAvailable: Bool
     
