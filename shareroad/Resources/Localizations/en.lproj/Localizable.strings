@@ -30,3 +30,14 @@
 "payment.method" = "Payment Method";
 "payment.cash" = "Cash";
 "payment.pos" = "POS";
+
+// MARK: - Route Search
+"route.title" = "Route";
+"route.pickup.my_location" = "My Location";
+"route.destination.placeholder" = "Where would you like to go?";
+"route.search.recent" = "Recent Searches";
+"route.search.no_results" = "No results found";
+"route.map.select_location" = "Select on Map";
+"route.favorites" = "Saved Places";
+"route.stop.placeholder" = "Add Stop";
+"route.stop.limit_warning" = "You can add up to 3 stops.";

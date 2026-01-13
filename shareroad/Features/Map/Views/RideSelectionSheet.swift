@@ -14,6 +14,7 @@ struct RideSelectionSheet: View {
     
     // MARK: - Properties
     @ObservedObject var viewModel: MapHomeViewModel
+    var onSearchBarTap: (() -> Void)?
     
     // MARK: - Body
     var body: some View {
@@ -23,11 +24,15 @@ struct RideSelectionSheet: View {
             
             // İçerik
             VStack(spacing: 16) {
-                // Arama Çubuğu (Yeni konum)
+                // Arama Çubuğu (Tappable - RouteSearch açar)
                 MapSearchBar(
                     searchText: $viewModel.searchText,
                     isSearching: $viewModel.isSearching
                 )
+                .disabled(true) // Yazma kapalı, sadece tap
+                .onTapGesture {
+                    onSearchBarTap?()
+                }
                 
                 // Taksi seçenekleri
                 taxiOptionsSection

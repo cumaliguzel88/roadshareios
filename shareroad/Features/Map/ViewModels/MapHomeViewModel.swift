@@ -97,7 +97,9 @@ final class MapHomeViewModel: ObservableObject {
         )
     )
     @Published var userLocation: CLLocationCoordinate2D?
-    @Published var destinationLocation: CLLocationCoordinate2D?
+    @Published var destinationCoordinate: CLLocationCoordinate2D?
+    @Published var destinationName: String?
+    @Published var calculatedRoute: MKRoute?
     
     // MARK: - Selection State
     @Published var selectedTaxiType: TaxiType = .yellow
@@ -306,6 +308,77 @@ final class MapHomeViewModel: ObservableObject {
         print("🚕 Create ride tapped - Taxi: \(selectedTaxiType.name), Payment: \(selectedPaymentMethod.displayName)")
         #endif
         // Backend entegrasyonu sonra eklenecek
+    }
+    
+    /// Varış noktası seç ve rota hesapla
+    func setDestination(_ coordinate: CLLocationCoordinate2D, name: String) {
+        destinationCoordinate = coordinate
+        destinationName = name
+        
+        // Rota hesapla
+        calculateRoute()
+    }
+    
+    /// Rotayı temizle
+    func clearRoute() {
+        calculatedRoute = nil
+        destinationCoordinate = nil
+        destinationName = nil
+        
+        // Kullanıcı konumuna geri zoom yap
+        if let location = locationService.currentLocation {
+            centerOnUserLocation(location)
+        }
+    }
+    
+    /// Rota hesapla (MKDirections ile)
+    private func calculateRoute() {
+        guard let userCoord = userLocation,
+              let destCoord = destinationCoordinate else {
+            #if DEBUG
+            print("⚠️ Cannot calculate route: missing locations")
+            #endif
+            return
+        }
+        
+        let request = MKDirections.Request()
+        request.source = MKMapItem(placemark: MKPlacemark(coordinate: userCoord))
+        request.destination = MKMapItem(placemark: MKPlacemark(coordinate: destCoord))
+        request.transportType = .automobile
+        request.requestsAlternateRoutes = false
+        
+        let directions = MKDirections(request: request)
+        
+        Task {
+            do {
+                let response = try await directions.calculate()
+                
+                await MainActor.run {
+                    if let route = response.routes.first {
+                        self.calculatedRoute = route
+                        self.zoomToShowRoute(route, from: userCoord, to: destCoord)
+                        
+                        #if DEBUG
+                        print("✅ Route calculated: \(route.distance / 1000) km, \(route.expectedTravelTime / 60) min")
+                        #endif
+                    }
+                }
+            } catch {
+                #if DEBUG
+                print("❌ Route calculation failed: \(error.localizedDescription)")
+                #endif
+            }
+        }
+    }
+    
+    /// Haritayı rotayı gösterecek şekilde zoom yap
+    private func zoomToShowRoute(_ route: MKRoute, from: CLLocationCoordinate2D, to: CLLocationCoordinate2D) {
+        let rect = route.polyline.boundingMapRect
+        let padding = UIEdgeInsets(top: 80, left: 40, bottom: 350, right: 40) // Bottom sheet için alan bırak
+        
+        withAnimation(.easeInOut(duration: 0.8)) {
+            cameraPosition = .rect(rect.insetBy(dx: -rect.size.width * 0.2, dy: -rect.size.height * 0.2))
+        }
     }
     
     // MARK: - Private Helpers

@@ -30,3 +30,14 @@
 "payment.method" = "Ödeme Yöntemi";
 "payment.cash" = "Nakit";
 "payment.pos" = "POS";
+
+// MARK: - Route Search
+"route.title" = "Güzergahın";
+"route.pickup.my_location" = "Konumum";
+"route.destination.placeholder" = "Nereye gitmek istersiniz?";
+"route.search.recent" = "Son Aramalar";
+"route.search.no_results" = "Sonuç bulunamadı";
+"route.map.select_location" = "Konumu Harita Üzerinden Belirle";
+"route.favorites" = "Kaydedilen Yerler";
+"route.stop.placeholder" = "Durak Ekle";
+"route.stop.limit_warning" = "En fazla 3 durak ekleyebilirsin.";

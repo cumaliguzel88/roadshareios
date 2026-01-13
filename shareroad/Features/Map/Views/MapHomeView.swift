@@ -15,6 +15,8 @@ struct MapHomeView: View {
     
     // MARK: - Properties
     @StateObject private var viewModel: MapHomeViewModel
+    @StateObject private var routeSearchViewModel = RouteSearchViewModel()
+    @State private var showRouteSearch = false
     
     // MARK: - Init
     init(locationService: LocationService) {
@@ -26,9 +28,6 @@ struct MapHomeView: View {
         ZStack(alignment: .top) {
             // Harita (tam ekran, arka planda)
             mapView
-            
-            // Arama çubuğu - Artık bottom sheet içinde
-
             
             // Bottom sheet (altta overlay)
             VStack {
@@ -47,6 +46,26 @@ struct MapHomeView: View {
             // Dropdown açıkken dışarıya basılırsa kapat
             if viewModel.isDropdownOpen {
                 viewModel.toggleDropdown()
+            }
+        }
+        .fullScreenCover(isPresented: $showRouteSearch) {
+            RouteSearchView(viewModel: routeSearchViewModel)
+                .onAppear {
+                    // Kullanıcının gerçek konumunu RouteSearchViewModel'e geç
+                    if let userLocation = viewModel.locationService.currentLocation {
+                        routeSearchViewModel.setUserLocation(userLocation)
+                    }
+                }
+        }
+        .onChange(of: routeSearchViewModel.destinationLocation) { _, newDestination in
+            // Varış noktası seçildiğinde haritaya çiz
+            if let destination = newDestination {
+                showRouteSearch = false // Sayfayı kapat
+                
+                // Biraz gecikme ile rota hesapla (animasyon için)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    viewModel.setDestination(destination.coordinate, name: destination.title)
+                }
             }
         }
     }
@@ -69,6 +88,22 @@ private extension MapHomeView {
                     EmptyView() // Label gizle
                 }
             }
+            
+            // Varış noktası marker
+            if let destCoord = viewModel.destinationCoordinate,
+               let destName = viewModel.destinationName {
+                Annotation(coordinate: destCoord) {
+                    DestinationMarkerView()
+                } label: {
+                    Text(destName)
+                }
+            }
+            
+            // Rota çizgisi (siyah)
+            if let route = viewModel.calculatedRoute {
+                MapPolyline(route.polyline)
+                    .stroke(.black, lineWidth: 5)
+            }
         }
         .mapStyle(.standard(pointsOfInterest: .all, showsTraffic: false))
         .mapControls {
@@ -76,11 +111,49 @@ private extension MapHomeView {
         }
     }
     
-
-    
     /// Alt bottom sheet
     var bottomSheet: some View {
-        RideSelectionSheet(viewModel: viewModel)
+        RideSelectionSheet(viewModel: viewModel) {
+            showRouteSearch = true
+        }
+    }
+}
+
+// MARK: - Destination Marker View
+/// Varış noktası için özel marker
+struct DestinationMarkerView: View {
+    var body: some View {
+        VStack(spacing: 0) {
+            // Pin başlığı
+            ZStack {
+                Circle()
+                    .fill(.black)
+                    .frame(width: 32, height: 32)
+                
+                Circle()
+                    .fill(.white)
+                    .frame(width: 12, height: 12)
+            }
+            
+            // Pin iğnesi
+            Triangle()
+                .fill(.black)
+                .frame(width: 12, height: 10)
+                .offset(y: -2)
+        }
+        .shadow(color: .black.opacity(0.3), radius: 4, x: 0, y: 2)
+    }
+}
+
+// MARK: - Triangle Shape
+struct Triangle: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: CGPoint(x: rect.midX, y: rect.maxY))
+        path.addLine(to: CGPoint(x: rect.minX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
+        path.closeSubpath()
+        return path
     }
 }
 
