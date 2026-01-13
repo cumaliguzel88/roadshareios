@@ -1,0 +1,32 @@
+/* 
+   Localizable.strings (English)
+   shareroad
+
+   Created by Cumali Güzel on 13.01.2026.
+*/
+
+// MARK: - Location
+"location.permission.description" = "Location permission is required to show your location on the map and find the nearest taxis.";
+"location.button.accessibility" = "Go to my location";
+
+// MARK: - Common
+"common.error" = "Error";
+"common.ok" = "OK";
+"common.cancel" = "Cancel";
+
+// MARK: - Search
+"search.destination.placeholder" = "Enter destination";
+
+// MARK: - Ride / Taxi
+"ride.vehicle.yellow_taxi" = "Yellow Taxi";
+"ride.vehicle.turquoise_taxi" = "Turquoise Taxi";
+"ride.vehicle.description.fast" = "Ready and fast";
+"ride.vehicle.description.comfort" = "Comfortable ride";
+"ride.capacity" = "%d people";
+"ride.time.minutes" = "%d min";
+"ride.create" = "Create Ride";
+
+// MARK: - Payment
+"payment.method" = "Payment Method";
+"payment.cash" = "Cash";
+"payment.pos" = "POS";

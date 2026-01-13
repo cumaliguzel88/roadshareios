@@ -1,0 +1,32 @@
+/* 
+   Localizable.strings (Turkish)
+   shareroad
+
+   Created by Cumali Güzel on 13.01.2026.
+*/
+
+// MARK: - Location
+"location.permission.description" = "Konumunuzu haritada göstermek ve size en yakın taksileri bulmak için konum izni gereklidir.";
+"location.button.accessibility" = "Konumuma git";
+
+// MARK: - Common
+"common.error" = "Hata";
+"common.ok" = "Tamam";
+"common.cancel" = "İptal";
+
+// MARK: - Search
+"search.destination.placeholder" = "Varış noktası girin";
+
+// MARK: - Ride / Taxi
+"ride.vehicle.yellow_taxi" = "Sarı Taksi";
+"ride.vehicle.turquoise_taxi" = "Turkuaz Taksi";
+"ride.vehicle.description.fast" = "Hazır ve hızlı";
+"ride.vehicle.description.comfort" = "Konforlu yolculuk";
+"ride.capacity" = "%d kişi";
+"ride.time.minutes" = "%d dk";
+"ride.create" = "Yolculuk Oluştur";
+
+// MARK: - Payment
+"payment.method" = "Ödeme Yöntemi";
+"payment.cash" = "Nakit";
+"payment.pos" = "POS";
