@@ -104,8 +104,13 @@ final class MapHomeViewModel: ObservableObject {
     @Published var selectedPaymentMethod: PaymentMethod = .cash
     @Published var isDropdownOpen: Bool = false
     
+    // MARK: - Vehicle State
+    @Published var nearbyVehicles: [Vehicle] = []
+    @Published var isLoadingVehicles: Bool = false
+    
     // MARK: - Dependencies
     let locationService: LocationService
+    private let vehicleService = NearbyVehiclesService()
     private var cancellables = Set<AnyCancellable>()
     
     // MARK: - Computed Properties
@@ -126,6 +131,26 @@ final class MapHomeViewModel: ObservableObject {
     
     /// Konum servisini dinle
     private func setupBindings() {
+        // ... (Mevcut bindings)
+        
+        // İlk konum geldiğinde araçları yükle
+        locationService.$currentLocation
+            .compactMap { $0 }
+            .first()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] location in
+                self?.userLocation = location.coordinate
+                self?.centerOnUserLocation(location)
+                
+                // Araçları yükle (0.5s gecikmeli)
+                Task {
+                    try? await Task.sleep(nanoseconds: 500_000_000)
+                    await self?.loadNearbyVehicles(around: location)
+                }
+            }
+            .store(in: &cancellables)
+            
+        // Sürekli konum güncellemeleri
         locationService.$currentLocation
             .compactMap { $0?.coordinate }
             .receive(on: DispatchQueue.main)
@@ -133,16 +158,23 @@ final class MapHomeViewModel: ObservableObject {
                 self?.userLocation = coordinate
             }
             .store(in: &cancellables)
+    }
+    
+    /// Yakındaki araçları yükle
+    private func loadNearbyVehicles(around location: CLLocation) async {
+        guard !isLoadingVehicles else { return }
         
-        // İlk konumu aldığında haritayı oraya odakla
-        locationService.$currentLocation
-            .compactMap { $0 }
-            .first()
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] location in
-                self?.centerOnUserLocation(location)
-            }
-            .store(in: &cancellables)
+        isLoadingVehicles = true
+        let vehicles = await vehicleService.generateVehicles(around: location, count: 9)
+        
+        withAnimation {
+            self.nearbyVehicles = vehicles
+        }
+        isLoadingVehicles = false
+        
+        #if DEBUG
+        print("🚕 Loaded \(vehicles.count) nearby vehicles")
+        #endif
     }
     
     // MARK: - Public Methods

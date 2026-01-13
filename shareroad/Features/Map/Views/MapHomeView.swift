@@ -54,6 +54,15 @@ private extension MapHomeView {
         Map(position: $viewModel.cameraPosition) {
             // Kullanıcı konumu - native pulsing blue dot
             UserAnnotation(anchor: .center)
+            
+            // Yakındaki araçlar
+            ForEach(viewModel.nearbyVehicles) { vehicle in
+                Annotation(coordinate: vehicle.coordinate) {
+                    VehicleAnnotationView(vehicle: vehicle)
+                } label: {
+                    EmptyView() // Label gizle
+                }
+            }
         }
         .mapStyle(.standard(pointsOfInterest: .all, showsTraffic: false))
         .mapControls {
